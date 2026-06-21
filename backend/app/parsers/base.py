@@ -3,6 +3,15 @@ from abc import ABC, abstractmethod
 from app.models.schemas import Ecosystem, ParsedPackage
 
 
+class ParseError(Exception):
+    """Raised when a manifest is malformed and cannot be parsed.
+
+    Parsers raise this (rather than letting an arbitrary lower-level exception
+    propagate) so callers have a single, well-defined error type to catch when a
+    user uploads a corrupt or unsupported manifest.
+    """
+
+
 class BaseParser(ABC):
     """Abstract base for manifest parsers.
 

@@ -48,3 +48,8 @@ def get_parser(ecosystem: Ecosystem) -> BaseParser:
 def available_ecosystems() -> list[Ecosystem]:
     """Return the ecosystems that currently have a registered parser."""
     return list(_REGISTRY)
+
+
+# Import concrete parsers for their @register_parser side effects. These come
+# last so register_parser is defined before the modules import it back.
+from app.parsers import npm, pypi  # noqa: E402,F401
