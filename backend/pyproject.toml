@@ -10,6 +10,10 @@ dependencies = [
     "pydantic>=2.9",
     "pydantic-settings>=2.5",
     "packaging>=24.0",
+    # OSV.dev client. The http2 extra pulls in h2, which httpx needs to open
+    # an HTTP/2 connection — OSV supports it, letting the batch query and the
+    # per-id detail fetches share one multiplexed connection.
+    "httpx[http2]>=0.27",
 ]
 
 [dependency-groups]
@@ -17,6 +21,9 @@ dev = [
     "ruff>=0.7",
     "pytest>=8.3",
     "httpx>=0.27",
+    # Mock OSV's HTTP responses in tests so we never hit the real API.
+    "respx>=0.21",
+    "pytest-asyncio>=0.24",
 ]
 
 [build-system]
@@ -33,3 +40,5 @@ line-length = 100
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
+# Treat `async def test_*` as coroutine tests without per-test markers.
+asyncio_mode = "auto"
