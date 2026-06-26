@@ -10,6 +10,10 @@ dependencies = [
     "pydantic>=2.9",
     "pydantic-settings>=2.5",
     "packaging>=24.0",
+    # semver parses/compares npm versions per the SemVer spec. npm versions are
+    # not PEP 440, so packaging.version can't be trusted to order them; semver
+    # also exposes major/minor/patch for the breaking-upgrade heuristic.
+    "semver>=3.0",
     # OSV.dev client. The http2 extra pulls in h2, which httpx needs to open
     # an HTTP/2 connection — OSV supports it, letting the batch query and the
     # per-id detail fetches share one multiplexed connection.
