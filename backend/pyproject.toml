@@ -18,6 +18,13 @@ dependencies = [
     # an HTTP/2 connection — OSV supports it, letting the batch query and the
     # per-id detail fetches share one multiplexed connection.
     "httpx[http2]>=0.27",
+    # Anthropic SDK for the optional AI enrichment layer. The async client is
+    # constructed per request from a bring-your-own-key header.
+    "anthropic>=0.40",
+    # Per-IP rate limiting for the public scan endpoint.
+    "slowapi>=0.1.9",
+    # Required by FastAPI/Starlette to parse multipart file uploads.
+    "python-multipart>=0.0.12",
 ]
 
 [dependency-groups]

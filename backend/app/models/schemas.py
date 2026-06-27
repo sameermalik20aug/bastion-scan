@@ -49,3 +49,10 @@ class ScanResult(BaseModel):
     packages: list[PackageResult] = Field(default_factory=list)
     total_packages: int = 0
     total_vulnerabilities: int = 0
+    # The fixer's regenerated manifest with suggested safe versions substituted
+    # in (``None`` when nothing could be rewritten), plus the review framing.
+    fixed_manifest: str | None = None
+    fix_notice: str | None = None
+    # One-paragraph AI overview of the whole scan. ``None`` when no Anthropic key
+    # was supplied or the summary call failed — the scan is still complete.
+    executive_summary: str | None = None
