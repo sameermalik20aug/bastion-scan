@@ -1,0 +1,35 @@
+# Local two-service stack: FastAPI backend + static frontend, wired together so
+# the browser hits the frontend on :5173 and the frontend calls the backend on
+# :8000. Production deploys each service separately (Railway/Fly + Vercel); this
+# file is for running the whole thing locally with one command.
+#
+#   docker compose up --build
+#
+# No secrets live here. The Anthropic key is supplied by the user at request time
+# in the browser (BYOK) — it is never an environment variable on the server.
+
+services:
+  backend:
+    build:
+      context: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      # Allow the local frontend origin through CORS (matches the port below).
+      BASTION_CORS_ALLOWED_ORIGINS: "http://localhost:5173"
+      # No HTTPS locally, so don't tell the browser to force HTTPS on localhost.
+      BASTION_HSTS_ENABLED: "false"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # Baked into the bundle at build time. The browser resolves this, so it
+        # must be reachable from the host — not the compose service name.
+        VITE_API_BASE_URL: "http://localhost:8000"
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+    restart: unless-stopped

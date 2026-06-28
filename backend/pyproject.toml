@@ -1,0 +1,54 @@
+[project]
+name = "bastion-scan"
+version = "0.1.0"
+description = "Bastion — scans dependency manifests for known vulnerabilities."
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "pydantic>=2.9",
+    "pydantic-settings>=2.5",
+    "packaging>=24.0",
+    # semver parses/compares npm versions per the SemVer spec. npm versions are
+    # not PEP 440, so packaging.version can't be trusted to order them; semver
+    # also exposes major/minor/patch for the breaking-upgrade heuristic.
+    "semver>=3.0",
+    # OSV.dev client. The http2 extra pulls in h2, which httpx needs to open
+    # an HTTP/2 connection — OSV supports it, letting the batch query and the
+    # per-id detail fetches share one multiplexed connection.
+    "httpx[http2]>=0.27",
+    # Anthropic SDK for the optional AI enrichment layer. The async client is
+    # constructed per request from a bring-your-own-key header.
+    "anthropic>=0.40",
+    # Per-IP rate limiting for the public scan endpoint.
+    "slowapi>=0.1.9",
+    # Required by FastAPI/Starlette to parse multipart file uploads.
+    "python-multipart>=0.0.12",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.7",
+    "pytest>=8.3",
+    "httpx>=0.27",
+    # Mock OSV's HTTP responses in tests so we never hit the real API.
+    "respx>=0.21",
+    "pytest-asyncio>=0.24",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+# Treat `async def test_*` as coroutine tests without per-test markers.
+asyncio_mode = "auto"

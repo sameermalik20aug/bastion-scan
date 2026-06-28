@@ -1,0 +1,11 @@
+# Keep the build context lean and out of the image.
+node_modules/
+dist/
+dist-ssr/
+*.local
+.env
+.env.*
+!.env.example
+.git/
+.DS_Store
+*.log
