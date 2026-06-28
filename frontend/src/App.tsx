@@ -145,17 +145,28 @@ export default function App() {
         )}
       </main>
 
-      <footer className="mx-auto max-w-3xl px-4 py-8 text-center text-xs text-muted-foreground">
-        Bastion checks your dependencies against the{" "}
-        <a
-          href="https://osv.dev"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="underline underline-offset-2 hover:text-foreground"
-        >
-          OSV
-        </a>{" "}
-        database. Fix suggestions are a starting point — review before applying.
+      <footer className="mx-auto max-w-3xl space-y-2 px-4 py-8 text-center text-xs text-muted-foreground">
+        <p>
+          Bastion checks your dependencies against the{" "}
+          <a
+            href="https://osv.dev"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline underline-offset-2 hover:text-foreground"
+          >
+            OSV
+          </a>{" "}
+          database. Fix suggestions are a starting point — review before applying.
+        </p>
+        {/* Privacy line — exact copy to be supplied by the owner. Placeholder
+            below states the intended policy (no cookies, no tracking, files and
+            keys processed in memory and discarded). No cookie banner: the app
+            sets no cookies and runs no analytics, deliberately. */}
+        <p>
+          <span className="font-medium text-foreground">Privacy:</span> No cookies, no tracking.
+          Your manifest and Anthropic key are processed in memory for the scan and discarded — never
+          stored, never logged.
+        </p>
       </footer>
     </div>
   );
