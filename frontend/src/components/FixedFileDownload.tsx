@@ -11,7 +11,7 @@ interface FixedFileDownloadProps {
   ecosystem: Ecosystem;
   originalManifest: string;
   fixedManifest: string;
-  /** The fixer's framing ("suggested safe versions, review before applying"). */
+  /** The fixer's framing ("suggested upgrades — review before applying"). */
   fixNotice: string | null;
 }
 
@@ -33,6 +33,40 @@ export function FixedFileDownload({
   const [copied, setCopied] = useState(false);
 
   const filename = FILENAME_BY_ECOSYSTEM[ecosystem];
+
+  // The diff is one of the two clearest things on the page (with the severity
+  // meter), so it gets a deliberate light theme: our mono face, calm slate
+  // chrome, and add/remove tints that hold AA and stay legible. The +/- gutter
+  // signs the library renders carry the change beyond colour alone.
+  const diffStyles = {
+    variables: {
+      light: {
+        diffViewerBackground: "#fbfcfe",
+        diffViewerColor: "#1b2436",
+        addedBackground: "#e7f6ee",
+        addedColor: "#0f5132",
+        removedBackground: "#fdecea",
+        removedColor: "#842029",
+        wordAddedBackground: "#bfe7cf",
+        wordRemovedBackground: "#f7c7c0",
+        addedGutterBackground: "#d7efe0",
+        removedGutterBackground: "#fbdad5",
+        gutterBackground: "#f1f4f9",
+        gutterColor: "#8a94a6",
+        codeFoldBackground: "#eef2f7",
+        codeFoldGutterBackground: "#e2e8f1",
+        emptyLineBackground: "#f7f9fc",
+      },
+    },
+    contentText: { fontFamily: "var(--font-mono)", fontSize: "0.8125rem" },
+    gutter: { fontFamily: "var(--font-mono)", fontSize: "0.75rem" },
+    titleBlock: {
+      fontFamily: "var(--font-sans)",
+      fontSize: "0.75rem",
+      fontWeight: 600,
+      color: "#5b6678",
+    },
+  };
 
   async function handleCopy() {
     try {
@@ -100,7 +134,8 @@ export function FixedFileDownload({
             oldValue={originalManifest}
             newValue={fixedManifest}
             splitView={splitView}
-            useDarkTheme
+            useDarkTheme={false}
+            styles={diffStyles}
             compareMethod={DiffMethod.WORDS}
             leftTitle="Original"
             rightTitle="Suggested"

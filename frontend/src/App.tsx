@@ -5,7 +5,7 @@ import { FileUpload, type ScanSubmission } from "@/components/FileUpload";
 import { ScanErrorState } from "@/components/ScanErrorState";
 import { ScanProgress, type ScanStage } from "@/components/ScanProgress";
 import { ScanReport } from "@/components/ScanReport";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { ScanError, scanManifest } from "@/lib/api";
 import { detectEcosystem, estimatePackageCount } from "@/lib/manifest";
 import type { ScanResult } from "@/types/scan";
@@ -109,23 +109,32 @@ export default function App() {
   }, [runScan]);
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b">
-        <div className="mx-auto flex max-w-3xl items-center gap-2.5 px-4 py-4">
-          <ShieldHalf className="size-6 text-primary" />
-          <span className="text-lg font-semibold tracking-tight">Bastion</span>
+    <div className="flex min-h-screen flex-col bg-background">
+      <header className="border-b border-border/70 bg-card/60">
+        <div className="mx-auto flex max-w-3xl items-center gap-2.5 px-4 py-4 sm:px-6">
+          <span className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <ShieldHalf className="size-5" />
+          </span>
+          <span className="font-display text-lg font-semibold tracking-tight">Bastion</span>
           <span className="hidden text-sm text-muted-foreground sm:inline">
-            · Dependency vulnerability scanner
+            Dependency vulnerability scanner
           </span>
         </div>
       </header>
 
-      <main className="mx-auto max-w-3xl space-y-6 px-4 py-8">
+      <main className="mx-auto w-full max-w-3xl flex-1 space-y-6 px-4 py-8 sm:px-6 sm:py-10">
+        <div className="space-y-1.5">
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+            Scan a dependency manifest
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Check your packages against the OSV database and get reviewed, non-breaking fix
+            suggestions.
+          </p>
+        </div>
+
         <Card>
-          <CardHeader>
-            <CardTitle>Scan a dependency manifest</CardTitle>
-          </CardHeader>
-          <CardContent>
+          <CardContent className="pt-6">
             <FileUpload onScan={runScan} isScanning={status === "scanning"} />
           </CardContent>
         </Card>
@@ -145,14 +154,14 @@ export default function App() {
         )}
       </main>
 
-      <footer className="mx-auto max-w-3xl space-y-2 px-4 py-8 text-center text-xs text-muted-foreground">
+      <footer className="mx-auto w-full max-w-3xl space-y-2 border-t border-border/70 px-4 py-8 text-center text-xs leading-relaxed text-muted-foreground sm:px-6">
         <p>
           Bastion checks your dependencies against the{" "}
           <a
             href="https://osv.dev"
             target="_blank"
             rel="noopener noreferrer"
-            className="underline underline-offset-2 hover:text-foreground"
+            className="font-medium text-primary underline underline-offset-2 hover:text-primary/80"
           >
             OSV
           </a>{" "}

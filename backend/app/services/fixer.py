@@ -1,4 +1,4 @@
-"""Produce a corrected manifest with suggested safe versions substituted in.
+"""Produce a corrected manifest with suggested upgrade versions substituted in.
 
 Given the packages a parser pulled out of a manifest and the vulnerabilities OSV
 reported for them, this module decides — per package — whether it can safely
@@ -40,8 +40,9 @@ from app.models.schemas import Ecosystem, ParsedPackage, Vulnerability
 
 # The one piece of framing every consumer of this module should echo to users.
 # We never call a rewritten manifest "fixed" or "safe": the upgrade may break
-# the build, and we have not run the caller's tests.
-REVIEW_NOTICE = "suggested safe versions, review before applying"
+# the build, and we have not run the caller's tests — so the notice itself must
+# not use either word.
+REVIEW_NOTICE = "suggested upgrades — review before applying"
 
 
 class FixSuggestion(BaseModel):

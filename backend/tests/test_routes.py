@@ -6,14 +6,16 @@ JSON), ecosystem detection, the body-size cap, error mapping, the fixer merge,
 bring-your-own-key enrichment, and rate limiting.
 """
 
+import httpx
 import pytest
+import respx
 from fastapi.testclient import TestClient
 
 from app.api import routes
 from app.main import app
 from app.models.schemas import Vulnerability
 from app.services import ai_service
-from app.services.osv_client import OsvUnavailableError
+from app.services.osv_client import OsvClient, OsvUnavailableError
 
 SCAN_URL = "/api/v1/scan"
 
@@ -83,6 +85,48 @@ class _FakeAnthropic:
         self.closed = True
 
 
+class _BranchingAnthropic:
+    """Returns per-vuln explanation JSON, or summary prose for the summary call.
+
+    The summary prompt is the only one carrying a ``<scan_data>`` block, so the
+    request content distinguishes the two call shapes — letting one fake serve a
+    realistic enrichment (explanations + a distinct executive summary).
+    """
+
+    def __init__(self, explanation: str, summary: str) -> None:
+        self._explanation = explanation
+        self._summary = summary
+        self.messages = self
+        self.closed = False
+
+    async def create(self, **kwargs):
+        user = kwargs["messages"][0]["content"]
+        return _FakeMessage(self._summary if "<scan_data>" in user else self._explanation)
+
+    async def close(self) -> None:
+        self.closed = True
+
+
+VALID_EXPLANATION = (
+    '{"what_it_is": "Prototype pollution.", "real_world_risk": "Object tampering.", '
+    '"should_i_worry": "Fix now", "fix_note": "Upgrade to the patched release."}'
+)
+
+# A representative npm GHSA record for the respx-backed integration test: a CVSS
+# vector (scores critical) and a fixed event in the affected ranges.
+GHSA_RECORD = {
+    "id": "GHSA-xxxx-yyyy-zzzz",
+    "summary": "Prototype pollution in lodash",
+    "severity": [{"type": "CVSS_V3", "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"}],
+    "affected": [
+        {
+            "package": {"ecosystem": "npm", "name": "lodash"},
+            "ranges": [{"type": "SEMVER", "events": [{"introduced": "0"}, {"fixed": "4.17.21"}]}],
+        }
+    ],
+}
+
+
 def _lodash_vuln() -> Vulnerability:
     return Vulnerability(
         id="GHSA-test",
@@ -141,6 +185,21 @@ def test_hint_overrides_filename(client):
     )
     assert response.status_code == 200
     assert response.json()["ecosystem"] == "PyPI"
+
+
+def test_multipart_file_wins_over_a_pasted_content_field(client):
+    # A request that carries BOTH an uploaded file and a pasted `content` form
+    # field: the multipart path reads the file part and ignores the stray
+    # `content`, so the uploaded package.json (npm) is what gets scanned.
+    response = client.post(
+        SCAN_URL,
+        files={"file": ("package.json", PACKAGE_JSON, "application/json")},
+        data={"content": REQUIREMENTS},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["ecosystem"] == "npm"  # from the file, not the pasted requirements
+    assert body["total_packages"] == 1
 
 
 # --------------------------------------------------------------------------- #
@@ -214,6 +273,24 @@ def test_body_over_size_cap_is_413(client):
     assert response.status_code == 413
 
 
+def test_streaming_body_over_cap_is_413_without_content_length(client):
+    # A chunked body declares no Content-Length, so the up-front header check
+    # can't catch it — only the streaming counter in _read_capped_body can. We
+    # stream just over the cap and expect a 413 before any JSON parsing happens.
+    chunk = b"x" * 100_001
+
+    def oversized_stream():
+        for _ in range(11):  # 1,100,011 bytes total, trips partway through
+            yield chunk
+
+    response = client.post(
+        SCAN_URL,
+        content=oversized_stream(),
+        headers={"content-type": "application/json"},
+    )
+    assert response.status_code == 413
+
+
 # --------------------------------------------------------------------------- #
 # Bring-your-own-key enrichment
 # --------------------------------------------------------------------------- #
@@ -269,3 +346,91 @@ def test_rate_limit_returns_clean_429(client):
     last = client.post(SCAN_URL, json=payload)
     assert last.status_code == 429
     assert "10 scans per minute" in last.json()["detail"]
+
+
+# --------------------------------------------------------------------------- #
+# Integration: the full /scan pipeline end to end
+# --------------------------------------------------------------------------- #
+
+# A manifest with one vulnerable pin (lodash) and one clean pin (left-pad), so
+# the pipeline must report a finding for one and nothing for the other.
+MIXED_PACKAGE_JSON = (
+    '{"dependencies": {"lodash": "4.17.20", "left-pad": "1.3.0"}}'
+)
+
+
+def test_full_scan_mixed_manifest_with_osv_and_ai(client, monkeypatch):
+    # End to end with OSV faked at the client and Anthropic faked at the factory:
+    # a mixed manifest -> one finding, AI explanation + executive summary attached,
+    # a rewritten manifest surfaced, and the key never echoed back.
+    monkeypatch.setattr(routes, "osv_client", _FakeOsv(vulns=[_lodash_vuln()]))
+    monkeypatch.setattr(
+        ai_service,
+        "_build_client",
+        lambda api_key: _BranchingAnthropic(VALID_EXPLANATION, "One critical issue; upgrade lodash."),
+    )
+
+    secret = "sk-do-not-leak"
+    response = client.post(
+        SCAN_URL,
+        json={"content": MIXED_PACKAGE_JSON, "ecosystem": "npm"},
+        headers={"X-Anthropic-Key": secret},
+    )
+    assert response.status_code == 200
+    body = response.json()
+
+    assert body["total_packages"] == 2
+    assert body["total_vulnerabilities"] == 1
+    packages = {pkg["name"]: pkg for pkg in body["packages"]}
+    # The clean package carries no findings; the vulnerable one is enriched.
+    assert packages["left-pad"]["vulnerabilities"] == []
+    (vuln,) = packages["lodash"]["vulnerabilities"]
+    explanation = ai_service.VulnExplanation.model_validate_json(vuln["ai_explanation"])
+    assert explanation.should_i_worry == "Fix now"
+
+    # Whole-scan enrichment and the deterministic fixer output both come through.
+    assert body["executive_summary"] == "One critical issue; upgrade lodash."
+    assert body["fixed_manifest"] is not None
+    assert '"lodash": "4.17.21"' in body["fixed_manifest"]
+    assert '"left-pad": "1.3.0"' in body["fixed_manifest"]  # clean pin untouched
+    assert secret not in response.text
+
+
+@respx.mock
+def test_full_scan_drives_real_osv_client_over_mocked_http(client, monkeypatch):
+    # The most integration-y path: a real OsvClient runs through the route, its
+    # OSV HTTP mocked with respx, the fixer runs for real, and Anthropic is faked.
+    # Exercises parse -> querybatch -> per-id fetch -> fixer -> AI in one request.
+    respx.post("https://api.osv.dev/v1/querybatch").mock(
+        return_value=httpx.Response(
+            200, json={"results": [{"vulns": [{"id": "GHSA-xxxx-yyyy-zzzz"}]}]}
+        )
+    )
+    respx.get("https://api.osv.dev/v1/vulns/GHSA-xxxx-yyyy-zzzz").mock(
+        return_value=httpx.Response(200, json=GHSA_RECORD)
+    )
+    # A fresh client so this test's findings aren't served from a shared cache.
+    monkeypatch.setattr(routes, "osv_client", OsvClient())
+    monkeypatch.setattr(
+        ai_service,
+        "_build_client",
+        lambda api_key: _BranchingAnthropic(VALID_EXPLANATION, "Upgrade lodash now."),
+    )
+
+    response = client.post(
+        SCAN_URL,
+        json={"content": PACKAGE_JSON, "ecosystem": "npm"},
+        headers={"X-Anthropic-Key": "sk-test"},
+    )
+    assert response.status_code == 200
+    body = response.json()
+
+    assert body["total_vulnerabilities"] == 1
+    (vuln,) = body["packages"][0]["vulnerabilities"]
+    assert vuln["id"] == "GHSA-xxxx-yyyy-zzzz"
+    assert vuln["severity"] == "critical"
+    # The fixer derived 4.17.21 from OSV's affected ranges and rewrote the pin.
+    assert vuln["fixed_version"] == "4.17.21"
+    assert vuln["ai_explanation"] is not None
+    assert '"lodash": "4.17.21"' in body["fixed_manifest"]
+    assert body["executive_summary"] == "Upgrade lodash now."

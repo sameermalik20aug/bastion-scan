@@ -58,6 +58,12 @@ MAX_CONCURRENCY = 5
 EXPLANATION_MAX_TOKENS = 1024
 SUMMARY_MAX_TOKENS = 512
 
+# Per-request timeout for the Anthropic call. The SDK's default is 10 minutes,
+# which — even though every call degrades to the OSV summary on failure — could
+# tie a worker up for minutes if the API stalls. These calls are tiny and fast,
+# so cap each attempt tightly and let the graceful fallback take over instead.
+ANTHROPIC_TIMEOUT_SECONDS = 30.0
+
 # The only three verdicts the frontend knows how to render. A response with any
 # other value is treated as invalid and falls back to the OSV summary.
 WorryVerdict = Literal["Fix now", "Fix this sprint", "Low priority"]
@@ -154,9 +160,10 @@ def _build_client(api_key: str) -> anthropic.AsyncAnthropic:
 
     Isolated into its own function so tests can substitute a fake client without
     touching the network. The key is passed straight through and lives only as
-    long as the returned client.
+    long as the returned client. The timeout bounds a stalled API to a clean
+    fallback rather than a multi-minute hang (see ANTHROPIC_TIMEOUT_SECONDS).
     """
-    return anthropic.AsyncAnthropic(api_key=api_key)
+    return anthropic.AsyncAnthropic(api_key=api_key, timeout=ANTHROPIC_TIMEOUT_SECONDS)
 
 
 async def _enrich_vuln(

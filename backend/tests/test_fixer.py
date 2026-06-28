@@ -250,3 +250,50 @@ def test_result_carries_review_notice():
     result = _pypi("requests==2.25.0\n", [_vuln("requests", "2.25.0", "2.25.1")])
     assert result.notice == REVIEW_NOTICE
     assert "review before applying" in result.notice
+
+
+def test_review_notice_never_claims_fixed_or_safe():
+    # The audit's framing rule: a rewritten manifest is a *suggestion*, never
+    # "fixed" or "safe" — neither word may appear in the notice we echo to users.
+    lowered = REVIEW_NOTICE.lower()
+    assert "safe" not in lowered
+    assert "fixed" not in lowered
+
+
+# --------------------------------------------------------------------------- #
+# Edge cases: mixed manifests and advisory collapse
+# --------------------------------------------------------------------------- #
+
+
+def test_mixed_vulnerable_and_clean_packages():
+    # Two pinned packages; only `requests` is vulnerable. The clean `flask` line
+    # must produce no suggestion and survive the rewrite untouched.
+    manifest = "requests==2.25.0\nflask==2.0.0\n"
+    result = _pypi(manifest, [_vuln("requests", "2.25.0", "2.25.1")])
+
+    assert [s.package for s in result.suggestions] == ["requests"]
+    assert result.manifest == "requests==2.25.1\nflask==2.0.0\n"
+
+
+def test_many_advisories_collapse_to_single_highest_fix():
+    # A package carrying several advisories, each with its own fixed version, must
+    # collapse to exactly ONE suggestion whose version clears them all — the
+    # numeric max (1.10.0 here, not the lexical max 1.9.0).
+    manifest = "pkg==1.0.0\n"
+    result = _pypi(
+        manifest,
+        [
+            _vuln("pkg", "1.0.0", "1.2.0"),
+            _vuln("pkg", "1.0.0", "1.10.0"),
+            _vuln("pkg", "1.0.0", "1.9.0"),
+            _vuln("pkg", "1.0.0", "1.3.0"),
+        ],
+    )
+
+    rows = [s for s in result.suggestions if s.package == "pkg"]
+    assert len(rows) == 1  # one row per affected package, never one per advisory
+    assert rows[0].suggested_version == "1.10.0"
+    assert rows[0].applied is True
+    # 1.0.0 -> 1.10.0 is a minor bump at >= 1.0, so it is not breaking.
+    assert rows[0].is_breaking_upgrade is False
+    assert result.manifest == "pkg==1.10.0\n"

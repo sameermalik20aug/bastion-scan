@@ -289,6 +289,38 @@ async def test_partial_detail_failure_is_skipped_not_fatal():
 
 
 @respx.mock
+async def test_partial_failure_across_packages_keeps_the_resolved_one():
+    # Two *different* packages matched in one batch, each to its own advisory.
+    # lodash's detail resolves; left-pad's only advisory 404s mid-batch. The 404
+    # must not sink the whole scan: lodash's finding survives, left-pad ends clean.
+    respx.post(QUERYBATCH_URL).mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "results": [
+                    {"vulns": [{"id": "GHSA-xxxx-yyyy-zzzz"}]},
+                    {"vulns": [{"id": "GHSA-gone"}]},
+                ]
+            },
+        )
+    )
+    respx.get(_vuln_url("GHSA-xxxx-yyyy-zzzz")).mock(
+        return_value=httpx.Response(200, json=GHSA_RECORD)
+    )
+    respx.get(_vuln_url("GHSA-gone")).mock(return_value=httpx.Response(404))
+
+    client = OsvClient()
+    vulns = await client.find_vulnerabilities(
+        [_pkg("lodash", "4.17.15"), _pkg("left-pad", "1.3.0")], "npm"
+    )
+
+    assert [v.id for v in vulns] == ["GHSA-xxxx-yyyy-zzzz"]
+    assert {v.package for v in vulns} == {"lodash"}
+    # left-pad resolved to no findings and is cached as such — not retried.
+    assert client._cache[("npm", "left-pad", "1.3.0")] == []
+
+
+@respx.mock
 async def test_module_level_client_is_shared():
     # The module exposes a process-wide instance for cache reuse across requests.
     assert isinstance(osv_module.osv_client, OsvClient)
