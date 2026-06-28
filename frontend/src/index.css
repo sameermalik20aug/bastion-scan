@@ -1,58 +1,53 @@
 @import "tailwindcss";
 
-/* Enable class-based dark mode (the <html> tag carries `dark`). */
-@custom-variant dark (&:where(.dark, .dark *));
-
 /*
- * shadcn/ui design tokens, expressed as CSS variables and mapped into Tailwind's
- * theme via @theme inline so utilities like `bg-background` / `text-muted-foreground`
- * resolve to them. Bastion ships dark-first (a security console reads better dark),
- * but the light palette is here too for completeness.
+ * Bastion — light, calm, "engineered instrument" identity.
+ *
+ * The product is a security tool for developers and hiring managers: it should
+ * read as a precise, credible instrument, not a marketing demo. So: a cool,
+ * low-glare slate light theme (never stark white), one restrained indigo brand
+ * color, and a single signature element (the proportional severity meter) that
+ * carries all the boldness while everything else stays quiet.
+ *
+ * Tokens are plain hex (not oklch) so the palette is legible at a glance and
+ * easy to audit for contrast. They map into Tailwind's theme via @theme inline
+ * so utilities like `bg-background` / `text-muted-foreground` resolve to them.
  */
 :root {
-  --radius: 0.65rem;
+  --radius: 0.625rem;
 
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-}
+  /* Neutrals — cool slate, tinted away from pure white to cut glare. */
+  --background: #eef2f7; /* page: soft cool slate */
+  --foreground: #1b2436; /* ink: deep slate, not black */
+  --card: #fbfcfe; /* surface: lifts off the page via tint + hairline */
+  --card-foreground: #1b2436;
+  --popover: #ffffff;
+  --popover-foreground: #1b2436;
 
-.dark {
-  --background: oklch(0.16 0.01 260);
-  --foreground: oklch(0.97 0 0);
-  --card: oklch(0.205 0.01 260);
-  --card-foreground: oklch(0.97 0 0);
-  --popover: oklch(0.205 0.01 260);
-  --popover-foreground: oklch(0.97 0 0);
-  --primary: oklch(0.7 0.16 162);
-  --primary-foreground: oklch(0.18 0.02 162);
-  --secondary: oklch(0.27 0.01 260);
-  --secondary-foreground: oklch(0.97 0 0);
-  --muted: oklch(0.27 0.01 260);
-  --muted-foreground: oklch(0.7 0.02 260);
-  --accent: oklch(0.3 0.01 260);
-  --accent-foreground: oklch(0.97 0 0);
-  --destructive: oklch(0.65 0.21 25);
-  --destructive-foreground: oklch(0.98 0 0);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 14%);
-  --ring: oklch(0.7 0.16 162);
+  /* Brand — a deliberate indigo, used sparingly (buttons, links, focus). */
+  --primary: #2e3a8c;
+  --primary-foreground: #ffffff;
+
+  --secondary: #e7ecf3;
+  --secondary-foreground: #2e3a8c;
+  --muted: #e9edf4; /* chips, quiet fills */
+  --muted-foreground: #5b6678; /* calm slate grey, AA on background */
+  --accent: #e6eafb; /* soft indigo tint for hover */
+  --accent-foreground: #2e3a8c;
+
+  /* Destructive — a true red that holds AA against white text. */
+  --destructive: #b42318;
+  --destructive-foreground: #ffffff;
+
+  --border: #dce3ec; /* soft cool hairline */
+  --input: #cdd6e1; /* input edges, a touch stronger than hairlines */
+  --ring: #3b4cca; /* focus — brighter brand indigo, clearly visible */
+
+  /* Type — a deliberate pairing, not a default sans.
+     Space Grotesk (display) / IBM Plex Sans (body) / IBM Plex Mono (code). */
+  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
 }
 
 @theme inline {
@@ -76,6 +71,10 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
 
+  --font-display: var(--font-display);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -86,10 +85,49 @@
   * {
     border-color: var(--color-border);
   }
+
+  html {
+    color-scheme: light;
+  }
+
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
-    font-feature-settings: "rlig" 1, "calt" 1;
+    font-family: var(--font-sans);
+    font-feature-settings: "calt" 1, "ss01" 1;
     -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Display type carries the personality; keep it tight and confident. */
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
+  }
+
+  /* A single, consistently visible keyboard focus ring everywhere. The outline
+     follows each element's own border-radius, so no radius is set here. shadcn
+     controls that opt into `outline-none` keep their own ring instead. */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background-color: color-mix(in srgb, var(--ring) 22%, transparent);
+  }
+}
+
+/* Respect users who ask for less motion — no spinners, fades, or pulses. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
   }
 }

@@ -201,6 +201,17 @@ async def test_invalid_verdict_falls_back(monkeypatch):
     assert result.packages[0].vulnerabilities[0].ai_explanation == "osv fallback text"
 
 
+async def test_valid_json_wrong_shape_falls_back(monkeypatch):
+    # Valid JSON, but the top-level value is an array, not the expected object.
+    # json.loads succeeds; model validation must reject it and fall back to OSV.
+    _install(monkeypatch, _branching_handler('[{"what_it_is": "x"}]', "summary"))
+    scan = _scan_with(_vuln(summary="osv fallback text"))
+
+    result = await ai_service.enrich_scan(scan_result=scan, api_key="sk-test")
+
+    assert result.packages[0].vulnerabilities[0].ai_explanation == "osv fallback text"
+
+
 async def test_missing_key_falls_back(monkeypatch):
     incomplete = '{"what_it_is": "x", "real_world_risk": "y", "should_i_worry": "Fix now"}'
     _install(monkeypatch, _branching_handler(incomplete, "summary"))
@@ -314,3 +325,16 @@ async def test_concurrency_is_capped_at_semaphore_limit(monkeypatch):
 
     assert state["peak"] <= ai_service.MAX_CONCURRENCY
     assert state["peak"] > 1  # confirm the calls really did overlap
+
+
+# --------------------------------------------------------------------------- #
+# Client construction: a stalled API must hit a bounded timeout, not hang
+# --------------------------------------------------------------------------- #
+
+
+def test_build_client_applies_the_request_timeout():
+    # The audit added a tight per-request timeout so a stalled Anthropic API
+    # degrades to the OSV fallback instead of tying up a worker for minutes.
+    # Construct the real client (no network on construction) and assert the cap.
+    client = ai_service._build_client("sk-not-used")
+    assert client.timeout == ai_service.ANTHROPIC_TIMEOUT_SECONDS

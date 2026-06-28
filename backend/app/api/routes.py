@@ -161,8 +161,7 @@ async def _read_multipart(request: Request) -> tuple[str, str | None, str | None
 
 async def _read_json(request: Request) -> tuple[str, str | None, str | None]:
     """Read ``content`` and optional ``ecosystem`` from a JSON body."""
-    body = await request.body()
-    _reject_if_too_large(len(body))
+    body = await _read_capped_body(request)
     try:
         payload = json.loads(body)
     except (json.JSONDecodeError, ValueError) as exc:
@@ -177,6 +176,24 @@ async def _read_json(request: Request) -> tuple[str, str | None, str | None]:
     hint = payload.get("ecosystem")
     ecosystem_hint = str(hint) if isinstance(hint, str) and hint.strip() else None
     return content, ecosystem_hint, None
+
+
+async def _read_capped_body(request: Request) -> bytes:
+    """Read the raw body, aborting with 413 as soon as the cap is crossed.
+
+    ``request.body()`` would buffer the *entire* body into memory before any
+    size check, so a client that omits or understates ``Content-Length`` could
+    force an arbitrarily large allocation. Streaming and counting as we go keeps
+    the resident size bounded to just over :data:`MAX_BODY_BYTES` regardless of
+    what the client declared.
+    """
+    chunks: list[bytes] = []
+    total = 0
+    async for chunk in request.stream():
+        total += len(chunk)
+        _reject_if_too_large(total)
+        chunks.append(chunk)
+    return b"".join(chunks)
 
 
 def _reject_if_too_large(size: str | int | None) -> None:

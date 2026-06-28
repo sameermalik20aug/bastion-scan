@@ -52,7 +52,7 @@ export interface ScanResult {
   packages: PackageResult[];
   total_packages: number;
   total_vulnerabilities: number;
-  /** Regenerated manifest with safe versions substituted; `null` if nothing changed. */
+  /** Regenerated manifest with suggested upgrade versions substituted; `null` if nothing changed. */
   fixed_manifest: string | null;
   fix_notice: string | null;
   /** One-paragraph AI overview; `null` in no-key mode or if the call failed. */
