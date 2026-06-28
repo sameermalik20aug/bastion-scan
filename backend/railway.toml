@@ -1,0 +1,18 @@
+# Railway service config for the Bastion backend.
+#
+# This file is read relative to the service's Root Directory, which must be set
+# to "backend" in the Railway dashboard (Settings → Source → Root Directory).
+# With that set, Railway finds this file and the sibling Dockerfile.
+#
+# Build from the Dockerfile (not Nixpacks) so the runtime matches local docker.
+[build]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+# Liveness probe — Railway waits for this to return 200 before routing traffic.
+healthcheckPath = "/api/v1/health"
+healthcheckTimeout = 100
+# Restart the container if it crashes, but don't loop forever on a bad deploy.
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 10

@@ -1,0 +1,67 @@
+# Continuous integration for Bastion.
+#
+# This workflow VERIFIES the code on every push and pull request to main; it does
+# NOT deploy. Railway (backend) and Vercel (frontend) each auto-deploy from their
+# own GitHub integration when main changes — CI is the gate that runs first.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel an in-progress run if newer commits land on the same ref.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (pytest)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+
+      - name: Install backend (app + dev tools)
+        run: |
+          python -m pip install --upgrade pip
+          pip install . --group dev
+
+      - name: Run pytest
+        run: pytest -q
+
+  frontend:
+    name: Frontend (build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      # `npm run build` runs `tsc -b && vite build`, so a type error fails CI.
+      # There is no separate lint script configured, so the typecheck-on-build
+      # is the static gate here.
+      - name: Build
+        run: npm run build

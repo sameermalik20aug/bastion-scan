@@ -50,9 +50,17 @@ COPY --chown=bastion:bastion app ./app
 
 USER bastion
 
+# Documents the default local port. Railway (and most container hosts) ignore
+# EXPOSE and instead inject a $PORT the process must bind — see the CMD below.
 EXPOSE 8000
 
 # Containers terminate TLS at the platform edge (Railway/Fly/etc.); uvicorn
 # serves plain HTTP behind it. The BYOK key is protected end-to-end by that
 # platform TLS plus the HSTS header the app sets.
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+#
+# Shell form (not exec/JSON) so ${PORT} is expanded by the shell at runtime:
+# Railway assigns a dynamic $PORT and routes external traffic to it, so we must
+# bind there rather than a hardcoded 8000. ${PORT:-8000} falls back to 8000 for
+# local docker-compose, where no $PORT is set. Binding 0.0.0.0 (not 127.0.0.1)
+# is required so the platform's edge proxy can reach the process.
+CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
