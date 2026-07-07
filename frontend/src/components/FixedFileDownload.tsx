@@ -29,7 +29,9 @@ export function FixedFileDownload({
   fixedManifest,
   fixNotice,
 }: FixedFileDownloadProps) {
-  const [splitView, setSplitView] = useState(true);
+  // Inline reads better for short dependency manifests and never clips on
+  // narrow screens, so it's the default; the toggle still offers side-by-side.
+  const [splitView, setSplitView] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const filename = FILENAME_BY_ECOSYSTEM[ecosystem];
@@ -130,16 +132,21 @@ export function FixedFileDownload({
       </CardHeader>
       <CardContent>
         <div className="overflow-hidden rounded-lg border text-sm">
-          <ReactDiffViewer
-            oldValue={originalManifest}
-            newValue={fixedManifest}
-            splitView={splitView}
-            useDarkTheme={false}
-            styles={diffStyles}
-            compareMethod={DiffMethod.WORDS}
-            leftTitle="Original"
-            rightTitle="Suggested"
-          />
+          {/* On narrow viewports the split view is wider than the card, so let
+              the diff scroll horizontally on its own instead of clipping the
+              "Suggested" column or forcing the whole page to scroll. */}
+          <div className="overflow-x-auto">
+            <ReactDiffViewer
+              oldValue={originalManifest}
+              newValue={fixedManifest}
+              splitView={splitView}
+              useDarkTheme={false}
+              styles={diffStyles}
+              compareMethod={DiffMethod.WORDS}
+              leftTitle="Original"
+              rightTitle="Suggested"
+            />
+          </div>
         </div>
       </CardContent>
     </Card>
