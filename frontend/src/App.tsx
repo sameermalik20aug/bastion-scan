@@ -165,15 +165,15 @@ export default function App() {
           >
             OSV
           </a>{" "}
-          database. Fix suggestions are a starting point — review before applying.
+          database. Fix suggestions are a starting point - review before applying.
         </p>
-        {/* Privacy line — exact copy to be supplied by the owner. Placeholder
+        {/* Privacy line - exact copy to be supplied by the owner. Placeholder
             below states the intended policy (no cookies, no tracking, files and
             keys processed in memory and discarded). No cookie banner: the app
             sets no cookies and runs no analytics, deliberately. */}
         <p>
           <span className="font-medium text-foreground">Privacy:</span> No cookies, no tracking.
-          Your manifest and Anthropic key are processed in memory for the scan and discarded — never
+          Your manifest and Anthropic key are processed in memory for the scan and discarded - never
           stored, never logged.
         </p>
       </footer>

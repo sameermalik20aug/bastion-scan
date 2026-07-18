@@ -126,7 +126,7 @@ cached, persisted, or read from server env. (To be precise: it does transit the
 server in a request header, since the Claude calls are server-side; the
 commitment is that it's never written anywhere.)
 
-This was a cost decision - the public demo stays free regardless of traffic — but
+This was a cost decision - the public demo stays free regardless of traffic - but
 it's also a security decision I'd defend in review: third-party credentials
 should have the shortest possible lifetime and the smallest possible blast
 radius. Every Anthropic call is wrapped so that even an SDK auth error (which can
@@ -304,4 +304,4 @@ See [`backend/.env.example`](backend/.env.example) and
 
 ## License
 
-MIT — see [`LICENSE`](LICENSE).
+MIT - [`LICENSE`](LICENSE).
